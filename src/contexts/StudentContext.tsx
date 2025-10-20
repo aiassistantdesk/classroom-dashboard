@@ -6,9 +6,16 @@ import {
   StudentFilters,
   StudentSortOptions,
 } from '../types/student';
-import { loadStudents, saveStudents, clearAllStudents } from '../utils/storage';
-import { generateId, calculateAge, matchesSearch } from '../utils/helpers';
+import { calculateAge, matchesSearch } from '../utils/helpers';
 import { useTeacher } from './TeacherContext';
+import { useAuth } from './AuthContext';
+import {
+  addStudent as addStudentToFirestore,
+  updateStudent as updateStudentInFirestore,
+  deleteStudent as deleteStudentFromFirestore,
+  subscribeToStudents,
+  getStudentsByTeacher,
+} from '../services/firestore';
 
 interface StudentContextType {
   students: Student[];
@@ -46,6 +53,7 @@ interface StudentProviderProps {
 
 export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) => {
   const { currentSession } = useTeacher();
+  const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -56,52 +64,54 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
     order: 'asc',
   });
 
-  // Load students on mount
+  // Subscribe to real-time student updates from Firestore
   useEffect(() => {
-    loadStudentsFromStorage();
-  }, []);
+    if (!user) {
+      setStudents([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    // Subscribe to real-time updates
+    const unsubscribe = subscribeToStudents(user.uid, (updatedStudents) => {
+      setStudents(updatedStudents);
+      setLoading(false);
+    });
+
+    // Cleanup subscription on unmount or when user changes
+    return () => unsubscribe();
+  }, [user]);
 
   // Apply filters and sorting whenever students, filters, sortOptions, or teacher session changes
   useEffect(() => {
     applyFiltersAndSort();
   }, [students, filters, sortOptions, currentSession]);
 
-  const loadStudentsFromStorage = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const loadedStudents = await loadStudents();
-      setStudents(loadedStudents);
-    } catch (err) {
-      setError('Failed to load students');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveStudentsToStorage = async (updatedStudents: Student[]) => {
-    try {
-      await saveStudents(updatedStudents);
-      setStudents(updatedStudents);
-    } catch (err) {
-      setError('Failed to save students');
-      throw err;
-    }
-  };
-
   const addStudent = async (input: CreateStudentInput): Promise<Student> => {
     try {
-      const newStudent: Student = {
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const studentData = {
         ...input,
-        id: generateId(),
         age: calculateAge(input.birthDate),
+      };
+
+      const studentId = await addStudentToFirestore(user.uid, studentData);
+
+      // Return the newly created student
+      const newStudent: Student = {
+        ...studentData,
+        id: studentId,
+        teacherId: user.uid,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      const updatedStudents = [...students, newStudent];
-      await saveStudentsToStorage(updatedStudents);
       return newStudent;
     } catch (err) {
       setError('Failed to add student');
@@ -121,18 +131,20 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
         ? calculateAge(input.birthDate)
         : existingStudent.age;
 
-      const updatedStudent: Student = {
-        ...existingStudent,
+      const updates = {
         ...input,
         age,
+      };
+
+      await updateStudentInFirestore(input.id, updates);
+
+      // Return the updated student (will be updated in real-time via subscription)
+      const updatedStudent: Student = {
+        ...existingStudent,
+        ...updates,
         updatedAt: new Date().toISOString(),
       };
 
-      const updatedStudents = students.map((s) =>
-        s.id === input.id ? updatedStudent : s
-      );
-
-      await saveStudentsToStorage(updatedStudents);
       return updatedStudent;
     } catch (err) {
       setError('Failed to update student');
@@ -142,8 +154,8 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
 
   const deleteStudent = async (id: string): Promise<void> => {
     try {
-      const updatedStudents = students.filter((s) => s.id !== id);
-      await saveStudentsToStorage(updatedStudents);
+      await deleteStudentFromFirestore(id);
+      // Student will be removed from local state via real-time subscription
     } catch (err) {
       setError('Failed to delete student');
       throw err;
@@ -236,9 +248,14 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
 
   const clearAllData = async (): Promise<void> => {
     try {
-      await clearAllStudents();
-      setStudents([]);
-      setFilteredStudents([]);
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Delete all students one by one
+      const deletePromises = students.map((student) => deleteStudentFromFirestore(student.id));
+      await Promise.all(deletePromises);
+      // Students will be cleared from local state via real-time subscription
     } catch (err) {
       setError('Failed to clear all data');
       throw err;
@@ -246,7 +263,20 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
   };
 
   const refreshStudents = async (): Promise<void> => {
-    await loadStudentsFromStorage();
+    try {
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      setLoading(true);
+      const loadedStudents = await getStudentsByTeacher(user.uid);
+      setStudents(loadedStudents);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to refresh students');
+      setLoading(false);
+      throw err;
+    }
   };
 
   const getTotalStudents = (): number => {

@@ -7,6 +7,7 @@ export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-'
 export interface Student {
   // System Fields
   id: string;
+  teacherId: string; // Firebase user ID of the teacher who owns this student
   createdAt: string;
   updatedAt: string;
   photoUrl?: string;
@@ -60,7 +61,7 @@ export interface Student {
 }
 
 // Type for creating a new student (without system-generated fields)
-export type CreateStudentInput = Omit<Student, 'id' | 'createdAt' | 'updatedAt' | 'age'>;
+export type CreateStudentInput = Omit<Student, 'id' | 'teacherId' | 'createdAt' | 'updatedAt' | 'age'>;
 
 // Type for updating a student (all fields optional except id)
 export type UpdateStudentInput = Partial<Omit<Student, 'id' | 'createdAt'>> & {
