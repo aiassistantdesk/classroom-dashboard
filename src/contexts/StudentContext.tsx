@@ -6,16 +6,9 @@ import {
   StudentFilters,
   StudentSortOptions,
 } from '../types/student';
-import { calculateAge, matchesSearch } from '../utils/helpers';
+import { loadStudents, saveStudents, clearAllStudents } from '../utils/storage';
+import { generateId, calculateAge, matchesSearch } from '../utils/helpers';
 import { useTeacher } from './TeacherContext';
-import { useAuth } from './AuthContext';
-import {
-  addStudent as addStudentToFirestore,
-  updateStudent as updateStudentInFirestore,
-  deleteStudent as deleteStudentFromFirestore,
-  subscribeToStudents,
-  getStudentsByTeacher,
-} from '../services/firestore';
 
 interface StudentContextType {
   students: Student[];
@@ -53,7 +46,6 @@ interface StudentProviderProps {
 
 export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) => {
   const { currentSession } = useTeacher();
-  const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -64,54 +56,53 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
     order: 'asc',
   });
 
-  // Subscribe to real-time student updates from Firestore
+  // Load students on mount from local storage
   useEffect(() => {
-    if (!user || !currentSession) {
-      setStudents([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    // Subscribe to real-time updates
-    const unsubscribe = subscribeToStudents(user.uid, currentSession.academicYear, (updatedStudents) => {
-      setStudents(updatedStudents);
-      setLoading(false);
-    });
-
-    // Cleanup subscription on unmount or when user changes
-    return () => unsubscribe();
-  }, [user, currentSession]);
+    loadStudentsFromStorage();
+  }, []);
 
   // Apply filters and sorting whenever students, filters, sortOptions, or teacher session changes
   useEffect(() => {
     applyFiltersAndSort();
   }, [students, filters, sortOptions, currentSession]);
 
+  const loadStudentsFromStorage = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const loadedStudents = await loadStudents();
+      setStudents(loadedStudents);
+    } catch (err) {
+      setError('Failed to load students');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveStudentsToStorage = async (updatedStudents: Student[]) => {
+    try {
+      await saveStudents(updatedStudents);
+      setStudents(updatedStudents);
+    } catch (err) {
+      setError('Failed to save students');
+      throw err;
+    }
+  };
+
   const addStudent = async (input: CreateStudentInput): Promise<Student> => {
     try {
-      if (!user || !currentSession) {
-        throw new Error('User not authenticated or session not found');
-      }
-
-      const studentData = {
-        ...input,
-        age: calculateAge(input.birthDate),
-      };
-
-      const studentId = await addStudentToFirestore(user.uid, currentSession.academicYear, studentData);
-
-      // Return the newly created student
       const newStudent: Student = {
-        ...studentData,
-        id: studentId,
-        teacherId: user.uid,
+        ...input,
+        id: generateId(),
+        teacherId: 'local-teacher', // Dummy ID for local storage
+        age: calculateAge(input.birthDate),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
+      const updatedStudents = [...students, newStudent];
+      await saveStudentsToStorage(updatedStudents);
       return newStudent;
     } catch (err) {
       setError('Failed to add student');
@@ -131,20 +122,18 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
         ? calculateAge(input.birthDate)
         : existingStudent.age;
 
-      const updates = {
-        ...input,
-        age,
-      };
-
-      await updateStudentInFirestore(input.id, updates);
-
-      // Return the updated student (will be updated in real-time via subscription)
       const updatedStudent: Student = {
         ...existingStudent,
-        ...updates,
+        ...input,
+        age,
         updatedAt: new Date().toISOString(),
       };
 
+      const updatedStudents = students.map((s) =>
+        s.id === input.id ? updatedStudent : s
+      );
+
+      await saveStudentsToStorage(updatedStudents);
       return updatedStudent;
     } catch (err) {
       setError('Failed to update student');
@@ -154,8 +143,8 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
 
   const deleteStudent = async (id: string): Promise<void> => {
     try {
-      await deleteStudentFromFirestore(id);
-      // Student will be removed from local state via real-time subscription
+      const updatedStudents = students.filter((s) => s.id !== id);
+      await saveStudentsToStorage(updatedStudents);
     } catch (err) {
       setError('Failed to delete student');
       throw err;
@@ -169,13 +158,21 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
   const applyFiltersAndSort = () => {
     let result = [...students];
 
-    // Apply teacher-specific filters first (class and academic year)
+    // Apply teacher-specific filters first (class and academic year) if session exists
     if (currentSession) {
       const teacher = currentSession.teacher;
       const academicYear = currentSession.academicYear;
 
-      // Filter by current academic year
-      result = result.filter((s) => s.academicYear === academicYear);
+      // Filter by teacher's class
+      result = result.filter((s) => s.classStandard === teacher.classStandard);
+
+      // Filter by teacher's division if specified
+      if (teacher.division) {
+        result = result.filter((s) => s.division === teacher.division);
+      }
+
+      // Filter by current academic year if student has one
+      result = result.filter((s) => !s.academicYear || s.academicYear === academicYear);
     }
 
     // Apply search filter
@@ -240,14 +237,9 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
 
   const clearAllData = async (): Promise<void> => {
     try {
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Delete all students one by one
-      const deletePromises = students.map((student) => deleteStudentFromFirestore(student.id));
-      await Promise.all(deletePromises);
-      // Students will be cleared from local state via real-time subscription
+      await clearAllStudents();
+      setStudents([]);
+      setFilteredStudents([]);
     } catch (err) {
       setError('Failed to clear all data');
       throw err;
@@ -255,20 +247,7 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
   };
 
   const refreshStudents = async (): Promise<void> => {
-    try {
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      setLoading(true);
-      const loadedStudents = await getStudentsByTeacher(user.uid);
-      setStudents(loadedStudents);
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to refresh students');
-      setLoading(false);
-      throw err;
-    }
+    await loadStudentsFromStorage();
   };
 
   const getTotalStudents = (): number => {

@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Teacher, TeacherSession } from '../types/teacher';
-import { useAuth } from './AuthContext';
-import { getTeacherProfile, saveTeacherProfile } from '../services/firestore';
 
 interface TeacherContextType {
   teacher: Teacher | null;
@@ -15,75 +13,57 @@ interface TeacherContextType {
 
 const TeacherContext = createContext<TeacherContextType | undefined>(undefined);
 
+// Default mock teacher for local storage mode
+const DEFAULT_TEACHER: Teacher = {
+  id: 'local-teacher',
+  name: 'Teacher',
+  email: 'teacher@local.com',
+  subject: 'All Subjects',
+  schoolName: 'Local School',
+  classStandard: '1-12', // All classes
+  division: undefined,
+  academicYear: '2024-2025',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 export const TeacherProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user, isLoading: authLoading } = useAuth();
-  const [teacher, setTeacher] = useState<Teacher | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [currentSession, setCurrentSession] = useState<TeacherSession | null>(null);
-
-  const fetchTeacherData = useCallback(async () => {
-    if (user) {
-      setLoading(true);
-      try {
-        const profile = await getTeacherProfile(user.uid);
-        setTeacher(profile);
-        if (profile) {
-          const academicYear = profile.academicYear || '2024-2025';
-          const session: TeacherSession = {
-            teacher: profile,
-            academicYear: academicYear,
-            loginTime: new Date().toISOString(),
-          };
-          setCurrentSession(session);
-
-          // If the academic year was missing, save it to the profile
-          if (!profile.academicYear) {
-            await saveTeacherProfile(user.uid, { academicYear });
-          }
-        }
-        // If profile is null, that's okay - means first-time user
-        // The loading will stop and CreateTeacherScreen will show
-      } catch (error) {
-        console.error('Failed to fetch teacher data:', error);
-        // On error, treat as first-time user (no profile)
-        setTeacher(null);
-        setCurrentSession(null);
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      // User logged out - clear teacher data
-      setTeacher(null);
-      setCurrentSession(null);
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchTeacherData();
-  }, [fetchTeacherData]);
+  const [teacher, setTeacher] = useState<Teacher | null>(DEFAULT_TEACHER);
+  const [loading, setLoading] = useState(false);
+  const [currentSession, setCurrentSession] = useState<TeacherSession | null>({
+    teacher: DEFAULT_TEACHER,
+    academicYear: '2024-2025',
+    loginTime: new Date().toISOString(),
+  });
 
   const refreshTeacherData = async () => {
-    await fetchTeacherData();
+    // No-op for local storage mode
+    return Promise.resolve();
   };
 
   const updateTeacherProfile = async (updates: Partial<Teacher>) => {
     if (teacher) {
-      await saveTeacherProfile(teacher.id, updates);
-      await refreshTeacherData();
+      const updatedTeacher = { ...teacher, ...updates };
+      setTeacher(updatedTeacher);
+      if (currentSession) {
+        setCurrentSession({
+          ...currentSession,
+          teacher: updatedTeacher,
+        });
+      }
     }
   };
 
   const changeAcademicYear = async (academicYear: string) => {
     if (currentSession) {
-        const updatedSession: TeacherSession = {
-            ...currentSession,
-            academicYear,
-        };
-        setCurrentSession(updatedSession);
-        if (teacher) {
-            await saveTeacherProfile(teacher.id, { academicYear });
-        }
+      const updatedSession: TeacherSession = {
+        ...currentSession,
+        academicYear,
+      };
+      setCurrentSession(updatedSession);
+      if (teacher) {
+        setTeacher({ ...teacher, academicYear });
+      }
     }
   };
 
@@ -91,8 +71,8 @@ export const TeacherProvider: React.FC<{ children: ReactNode }> = ({ children })
     <TeacherContext.Provider
       value={{
         teacher,
-        isAuthenticated: !!teacher,
-        loading: loading || authLoading,
+        isAuthenticated: true, // Always authenticated in local mode
+        loading,
         refreshTeacherData,
         updateTeacherProfile,
         currentSession,
