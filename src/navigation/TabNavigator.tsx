@@ -22,6 +22,7 @@ export const TabNavigator: React.FC = () => {
           paddingBottom: 8,
           paddingTop: 8,
           height: 60,
+          pointerEvents: 'auto',
         },
         tabBarLabelStyle: {
           fontSize: 12,

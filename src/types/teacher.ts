@@ -2,8 +2,8 @@ export interface Teacher {
   id: string;
   name: string;
   email: string;
-  password: string; // In production, this should be hashed
   subject: string;
+  schoolName: string; // School/institution name
   classStandard: string; // e.g., "7", "10", "12"
   division?: string; // Optional: specific division like "A", "B"
   academicYear: string; // e.g., "2024-2025", "2025-2026"

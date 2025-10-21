@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import { useStudents } from '../contexts/StudentContext';
 import { useTeacher } from '../contexts/TeacherContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button, Modal, ProfileMenu } from '../components/ui';
 import {
   Trash2,
@@ -13,7 +14,8 @@ import {
   Info,
   Database,
   FolderOpen,
-  PlusCircle
+  PlusCircle,
+  LogOut
 } from 'lucide-react-native';
 import { exportStudentsToJSON, importStudentsFromJSON } from '../utils/storage';
 import { generateId, calculateAge } from '../utils/helpers';
@@ -23,7 +25,9 @@ import { faker } from '@faker-js/faker';
 export const SettingsScreen: React.FC = () => {
   const { students, clearAllData, refreshStudents, addStudent } = useStudents();
   const { currentSession } = useTeacher();
+  const { logout } = useAuth();
   const [clearModalVisible, setClearModalVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
   const handleClearData = async () => {
     try {
@@ -85,6 +89,16 @@ export const SettingsScreen: React.FC = () => {
       Alert.alert('Success', 'Students imported successfully');
     } catch (error) {
       Alert.alert('Error', 'Failed to import data: ' + (error as Error).message);
+      console.error(error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setLogoutModalVisible(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to logout. Please try again.');
       console.error(error);
     }
   };
@@ -236,13 +250,22 @@ export const SettingsScreen: React.FC = () => {
 
                 <TouchableOpacity
                   onPress={() => setClearModalVisible(true)}
-                  className="bg-red-600 py-3.5 px-4 rounded-xl flex-row items-center justify-center"
+                  className="bg-red-600 py-3.5 px-4 rounded-xl flex-row items-center justify-center mb-3"
                 >
                   <Trash2 size={20} color="#fff" />
                   <Text className="ml-3 text-base font-bold text-white">Clear All Data</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setLogoutModalVisible(true)}
+                  className="bg-gray-700 py-3.5 px-4 rounded-xl flex-row items-center justify-center"
+                >
+                  <LogOut size={20} color="#fff" />
+                  <Text className="ml-3 text-base font-bold text-white">Logout</Text>
+                </TouchableOpacity>
+
                 <Text className="text-sm text-red-600 mt-3 text-center">
-                  This action is irreversible.
+                  These actions require confirmation.
                 </Text>
               </View>
             </View>
@@ -287,6 +310,44 @@ export const SettingsScreen: React.FC = () => {
           </Text>
           <Text className="text-red-600 text-sm text-center font-semibold">
             This action cannot be undone!
+          </Text>
+        </View>
+      </Modal>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={logoutModalVisible}
+        onClose={() => setLogoutModalVisible(false)}
+        title="Logout"
+        size="sm"
+        footer={
+          <View className="flex-row space-x-3">
+            <View className="flex-1">
+              <Button
+                variant="outline"
+                fullWidth
+                onPress={() => setLogoutModalVisible(false)}
+              >
+                Cancel
+              </Button>
+            </View>
+            <View className="flex-1">
+              <Button variant="danger" fullWidth onPress={handleLogout}>
+                Logout
+              </Button>
+            </View>
+          </View>
+        }
+      >
+        <View className="items-center py-4">
+          <View className="bg-gray-100 rounded-full p-4 mb-4">
+            <LogOut size={32} color="#374151" />
+          </View>
+          <Text className="text-gray-900 text-base mb-2 text-center font-bold">
+            Are you sure you want to logout?
+          </Text>
+          <Text className="text-gray-600 text-sm text-center">
+            You'll need to sign in again to access your dashboard.
           </Text>
         </View>
       </Modal>

@@ -22,6 +22,7 @@ export const CreateTeacherScreen: React.FC = () => {
         ...data,
         email: user.email || '',
         photoUrl: user.photoURL || '',
+        academicYear: '2024-2025', // Add a default academic year
       });
       await refreshTeacherData(); // Refresh teacher data after creation
     } catch (error) {

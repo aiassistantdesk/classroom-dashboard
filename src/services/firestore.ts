@@ -115,8 +115,7 @@ export const subscribeToTeacherProfile = (
  */
 export const addStudent = async (
   teacherId: string,
-  academicYear: string,
-  student: Omit<Student, 'id'>
+  student: Omit<Student, 'id' | 'teacherId'>
 ): Promise<string> => {
   try {
     // Create a unique ID for the student
@@ -127,7 +126,6 @@ export const addStudent = async (
       ...student,
       id: studentId,
       teacherId,
-      academicYear,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -216,14 +214,12 @@ export const getStudentsByTeacher = async (teacherId: string): Promise<Student[]
  */
 export const subscribeToStudents = (
   teacherId: string,
-  academicYear: string,
   callback: (students: Student[]) => void
 ): (() => void) => {
   const studentsRef = collection(db, COLLECTIONS.STUDENTS);
   const q = query(
     studentsRef,
-    where('teacherId', '==', teacherId),
-    where('academicYear', '==', academicYear)
+    where('teacherId', '==', teacherId)
   );
 
   return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {

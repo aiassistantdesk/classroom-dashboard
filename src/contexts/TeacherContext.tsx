@@ -28,18 +28,29 @@ export const TeacherProvider: React.FC<{ children: ReactNode }> = ({ children })
         const profile = await getTeacherProfile(user.uid);
         setTeacher(profile);
         if (profile) {
+          const academicYear = profile.academicYear || '2024-2025';
           const session: TeacherSession = {
             teacher: profile,
-            academicYear: profile.academicYear,
+            academicYear: academicYear,
             loginTime: new Date().toISOString(),
           };
           setCurrentSession(session);
+
+          // If the academic year was missing, save it to the profile
+          if (!profile.academicYear) {
+            await saveTeacherProfile(user.uid, { academicYear });
+          }
         }
       } catch (error) {
         console.error('Failed to fetch teacher data:', error);
       } finally {
         setLoading(false);
       }
+    } else {
+      // User logged out - clear teacher data
+      setTeacher(null);
+      setCurrentSession(null);
+      setLoading(false);
     }
   }, [user]);
 
