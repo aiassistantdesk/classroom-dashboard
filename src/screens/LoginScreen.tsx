@@ -1,101 +1,164 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Platform, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { GraduationCap } from 'lucide-react-native';
+import { BookOpen } from 'lucide-react-native';
 
 export const LoginScreen: React.FC = () => {
-  const { login, isLoading, error } = useAuth();
-  const [isSigningIn, setIsSigningIn] = useState(false);
+  const { login, error, isLoading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (error) {
-      const message = error || 'Failed to sign in';
-      if (Platform.OS === 'web') {
-        alert('Sign In Failed: ' + message);
-      } else {
-        Alert.alert('Sign In Failed', message);
-      }
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleLogin = async () => {
+    // Reset errors
+    setValidationError(null);
+
+    // Validation
+    if (!email.trim()) {
+      setValidationError('Email is required');
+      return;
     }
-  }, [error]);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsSigningIn(true);
-      await login();
-    } catch (err) {
-      console.error('Sign in error:', err);
-    } finally {
-      setIsSigningIn(false);
+    if (!validateEmail(email)) {
+      setValidationError('Please enter a valid email address');
+      return;
+    }
+
+    if (!password.trim()) {
+      setValidationError('Password is required');
+      return;
+    }
+
+    if (password.length < 6) {
+      setValidationError('Password must be at least 6 characters');
+      return;
+    }
+
+    // Attempt login
+    const success = await login(email.trim().toLowerCase(), password, rememberMe);
+
+    if (!success) {
+      // Error is set in AuthContext
+      console.log('Login failed');
     }
   };
 
-  const loading = isLoading || isSigningIn;
-
   return (
-    <View className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 justify-center items-center px-6">
-      <View className="w-full max-w-md">
-        {/* Header */}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1 bg-gray-900"
+    >
+      <View className="flex-1 justify-center px-6">
+        {/* Logo/Header */}
         <View className="items-center mb-12">
-          <View className="bg-blue-600 p-4 rounded-full mb-4">
-            <GraduationCap size={48} color="#ffffff" />
+          <View className="bg-blue-600 rounded-full p-4 mb-4">
+            <BookOpen size={48} color="#fff" />
           </View>
-          <Text className="text-4xl font-bold text-gray-900">EduClassroom</Text>
-          <Text className="text-lg text-gray-600 mt-2">Teacher Dashboard</Text>
+          <Text className="text-3xl font-bold text-white mb-2">
+            Classroom Dashboard
+          </Text>
+          <Text className="text-gray-400 text-center">
+            Manage your students with ease
+          </Text>
         </View>
 
-        {/* Main Card */}
-        <View className="bg-white rounded-2xl p-8 shadow-lg">
-          <Text className="text-2xl font-bold text-gray-900 text-center mb-3">
-            Welcome Back
-          </Text>
-          <Text className="text-gray-600 text-center mb-8">
-            Sign in with your Google account to manage your classroom
-          </Text>
+        {/* Login Form */}
+        <View className="space-y-4">
+          {/* Email Input */}
+          <View>
+            <Text className="text-gray-300 mb-2 text-sm font-medium">
+              Email Address
+            </Text>
+            <TextInput
+              className="bg-gray-800 text-white px-4 py-3.5 rounded-xl border border-gray-700 focus:border-blue-600"
+              placeholder="Enter your email"
+              placeholderTextColor="#6B7280"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isLoading}
+            />
+          </View>
 
-          {/* Google Sign-In Button */}
+          {/* Password Input */}
+          <View className="mt-4">
+            <Text className="text-gray-300 mb-2 text-sm font-medium">
+              Password
+            </Text>
+            <TextInput
+              className="bg-gray-800 text-white px-4 py-3.5 rounded-xl border border-gray-700 focus:border-blue-600"
+              placeholder="Enter your password"
+              placeholderTextColor="#6B7280"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isLoading}
+            />
+          </View>
+
+          {/* Remember Me */}
           <TouchableOpacity
-            onPress={handleGoogleSignIn}
-            disabled={loading}
-            className={`bg-white border-2 border-gray-300 py-4 px-6 rounded-xl flex-row items-center justify-center ${
-              loading ? 'opacity-50' : ''
-            }`}
-            style={{ elevation: 2 }}
+            onPress={() => setRememberMe(!rememberMe)}
+            className="flex-row items-center mt-4"
+            disabled={isLoading}
           >
-            {loading ? (
-              <ActivityIndicator color="#3b82f6" />
+            <View
+              className={`w-5 h-5 rounded border-2 mr-3 items-center justify-center ${
+                rememberMe ? 'bg-blue-600 border-blue-600' : 'border-gray-600'
+              }`}
+            >
+              {rememberMe && (
+                <Text className="text-white text-xs">✓</Text>
+              )}
+            </View>
+            <Text className="text-gray-300">Remember me</Text>
+          </TouchableOpacity>
+
+          {/* Error Messages */}
+          {(validationError || error) && (
+            <View className="bg-red-900/20 border border-red-600 rounded-xl p-3 mt-4">
+              <Text className="text-red-400 text-sm">
+                {validationError || error}
+              </Text>
+            </View>
+          )}
+
+          {/* Login Button */}
+          <TouchableOpacity
+            onPress={handleLogin}
+            disabled={isLoading}
+            className={`py-4 rounded-xl items-center mt-6 ${
+              isLoading ? 'bg-blue-600/50' : 'bg-blue-600'
+            }`}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
             ) : (
-              <>
-                <View className="mr-3">
-                  <Text className="text-2xl">🔐</Text>
-                </View>
-                <Text className="text-gray-900 text-lg font-semibold">
-                  Sign in with Google
-                </Text>
-              </>
+              <Text className="text-white font-bold text-lg">
+                Login
+              </Text>
             )}
           </TouchableOpacity>
 
-          {/* Info Section */}
-          <View className="mt-8 p-4 bg-blue-50 rounded-xl">
-            <Text className="text-sm text-blue-900 font-semibold mb-2">
-              Why Google Sign-In?
-            </Text>
-            <Text className="text-sm text-blue-800 leading-5">
-              • Your data is securely stored in the cloud{'\n'}
-              • Access from any device, anywhere{'\n'}
-              • Automatic sync across all your devices{'\n'}
-              • Works offline with automatic sync
+          {/* Demo Info */}
+          <View className="mt-6 bg-gray-800 rounded-xl p-4">
+            <Text className="text-gray-400 text-xs text-center">
+              Demo Mode: First-time users will be asked to set up their profile.{'\n'}
+              Your credentials are stored locally on this device.
             </Text>
           </View>
         </View>
-
-        {/* Footer */}
-        <View className="mt-8">
-          <Text className="text-center text-gray-600 text-sm">
-            Secure authentication powered by Firebase
-          </Text>
-        </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };

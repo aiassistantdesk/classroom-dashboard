@@ -1,69 +1,97 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Teacher, TeacherSession } from '../types/teacher';
+import { getCurrentTeacher, saveTeacherProfile, getAuthSession } from '../utils/storage';
+import { useAuth } from './AuthContext';
 
 interface TeacherContextType {
   teacher: Teacher | null;
-  isAuthenticated: boolean;
   loading: boolean;
   refreshTeacherData: () => Promise<void>;
   updateTeacherProfile: (updates: Partial<Teacher>) => Promise<void>;
+  saveTeacher: (teacher: Teacher) => Promise<void>;
   currentSession: TeacherSession | null;
   changeAcademicYear: (academicYear: string) => Promise<void>;
 }
 
 const TeacherContext = createContext<TeacherContextType | undefined>(undefined);
 
-// Default mock teacher for local storage mode
-const DEFAULT_TEACHER: Teacher = {
-  id: 'local-teacher',
-  name: 'Teacher',
-  email: 'teacher@local.com',
-  subject: 'All Subjects',
-  schoolName: 'Local School',
-  classStandard: '1-12', // All classes
-  division: undefined,
-  academicYear: '2024-2025',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
 export const TeacherProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [teacher, setTeacher] = useState<Teacher | null>(DEFAULT_TEACHER);
+  const { email, isAuthenticated } = useAuth();
+  const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [loading, setLoading] = useState(false);
-  const [currentSession, setCurrentSession] = useState<TeacherSession | null>({
-    teacher: DEFAULT_TEACHER,
-    academicYear: '2024-2025',
-    loginTime: new Date().toISOString(),
-  });
+  const [currentSession, setCurrentSession] = useState<TeacherSession | null>(null);
 
-  const refreshTeacherData = async () => {
-    // No-op for local storage mode
-    return Promise.resolve();
-  };
+  // Load teacher data when authentication changes
+  useEffect(() => {
+    if (isAuthenticated && email) {
+      loadTeacherData();
+    } else {
+      setTeacher(null);
+      setCurrentSession(null);
+    }
+  }, [isAuthenticated, email]);
 
-  const updateTeacherProfile = async (updates: Partial<Teacher>) => {
-    if (teacher) {
-      const updatedTeacher = { ...teacher, ...updates };
-      setTeacher(updatedTeacher);
-      if (currentSession) {
+  const loadTeacherData = async () => {
+    try {
+      setLoading(true);
+      const teacherData = await getCurrentTeacher();
+      setTeacher(teacherData);
+
+      if (teacherData) {
+        const session = await getAuthSession();
         setCurrentSession({
-          ...currentSession,
-          teacher: updatedTeacher,
+          teacher: teacherData,
+          academicYear: teacherData.academicYear,
+          loginTime: session?.loginTime || new Date().toISOString(),
         });
       }
+    } catch (error) {
+      console.error('Error loading teacher data:', error);
+      setTeacher(null);
+      setCurrentSession(null);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const refreshTeacherData = async () => {
+    await loadTeacherData();
+  };
+
+  const saveTeacher = async (teacherData: Teacher) => {
+    try {
+      await saveTeacherProfile(teacherData);
+      setTeacher(teacherData);
+
+      const session = await getAuthSession();
+      setCurrentSession({
+        teacher: teacherData,
+        academicYear: teacherData.academicYear,
+        loginTime: session?.loginTime || new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Error saving teacher:', error);
+      throw error;
+    }
+  };
+
+  const updateTeacherProfile = async (updates: Partial<Teacher>) => {
+    if (!teacher) {
+      throw new Error('No teacher profile to update');
+    }
+
+    const updatedTeacher: Teacher = {
+      ...teacher,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await saveTeacher(updatedTeacher);
+  };
+
   const changeAcademicYear = async (academicYear: string) => {
-    if (currentSession) {
-      const updatedSession: TeacherSession = {
-        ...currentSession,
-        academicYear,
-      };
-      setCurrentSession(updatedSession);
-      if (teacher) {
-        setTeacher({ ...teacher, academicYear });
-      }
+    if (teacher) {
+      await updateTeacherProfile({ academicYear });
     }
   };
 
@@ -71,10 +99,10 @@ export const TeacherProvider: React.FC<{ children: ReactNode }> = ({ children })
     <TeacherContext.Provider
       value={{
         teacher,
-        isAuthenticated: true, // Always authenticated in local mode
         loading,
         refreshTeacherData,
         updateTeacherProfile,
+        saveTeacher,
         currentSession,
         changeAcademicYear,
       }}

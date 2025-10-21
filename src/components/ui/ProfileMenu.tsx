@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal as RNModal, ScrollView, Alert, Platform } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTeacher } from '../../contexts/TeacherContext';
-import { User, LogOut, Calendar, BookOpen, School, Mail, Phone, ChevronDown, AlertTriangle } from 'lucide-react-native';
+import { RootStackParamList } from '../../navigation/types';
+import { User, LogOut, Calendar, BookOpen, School, Mail, Phone, ChevronDown, AlertTriangle, Edit } from 'lucide-react-native';
 import { Select, SelectOption } from './Select';
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export const ProfileMenu: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const { currentSession, changeAcademicYear } = useTeacher();
   const { logout } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -179,6 +185,18 @@ export const ProfileMenu: React.FC = () => {
 
                 {/* Divider */}
                 <View className="border-t border-gray-200 my-4" />
+
+                {/* Edit Profile Button */}
+                <TouchableOpacity
+                  onPress={() => {
+                    setMenuVisible(false);
+                    navigation.navigate('Profile');
+                  }}
+                  className="flex-row items-center justify-center bg-green-50 rounded-xl py-3 mb-3"
+                >
+                  <Edit size={20} color="#059669" />
+                  <Text className="ml-2 text-green-600 font-semibold">Edit Profile</Text>
+                </TouchableOpacity>
 
                 {/* Change Academic Year Button */}
                 <TouchableOpacity

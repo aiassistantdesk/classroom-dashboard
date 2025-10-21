@@ -7,10 +7,12 @@ import { Input } from '../ui/Input';
 
 const teacherSchema = z.object({
   name: z.string().min(3, 'Full name must be at least 3 characters'),
+  email: z.string().email('Please enter a valid email'),
   subject: z.string().min(2, 'Subject must be at least 2 characters'),
   schoolName: z.string().min(3, 'School name must be at least 3 characters'),
   classStandard: z.string().min(1, 'Class is required'),
   division: z.string().optional().or(z.literal('')), // Allow empty string
+  academicYear: z.string().min(1, 'Academic year is required'),
 });
 
 export type TeacherFormData = z.infer<typeof teacherSchema>;
@@ -19,16 +21,26 @@ interface TeacherFormProps {
   onSubmit: (data: TeacherFormData) => void;
   defaultValues?: Partial<TeacherFormData>;
   isSubmitting: boolean;
+  initialEmail?: string;
 }
 
-export const TeacherForm: React.FC<TeacherFormProps> = ({ onSubmit, defaultValues, isSubmitting }) => {
+export const TeacherForm: React.FC<TeacherFormProps> = ({
+  onSubmit,
+  defaultValues,
+  isSubmitting,
+  initialEmail,
+}) => {
   const { control, handleSubmit, formState: { errors } } = useForm<TeacherFormData>({
     resolver: zodResolver(teacherSchema),
-    defaultValues,
+    defaultValues: {
+      ...defaultValues,
+      email: initialEmail || defaultValues?.email || '',
+      academicYear: defaultValues?.academicYear || '2024-2025',
+    },
   });
 
   return (
-    <View className="p-6 bg-white rounded-2xl">
+    <View className="p-6 bg-gray-800 rounded-2xl">
       <Controller
         control={control}
         name="name"
@@ -40,6 +52,24 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({ onSubmit, defaultValue
             onChangeText={onChange}
             onBlur={onBlur}
             error={errors.name?.message}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="email"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Input
+            label="Email"
+            placeholder="your.email@example.com"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            error={errors.email?.message}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            editable={!initialEmail} // Disable if pre-filled from login
           />
         )}
       />
@@ -81,7 +111,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({ onSubmit, defaultValue
             name="classStandard"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Class"
+                label="Class Teacher Of"
                 placeholder="e.g., 10"
                 value={value}
                 onChangeText={onChange}
@@ -109,10 +139,25 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({ onSubmit, defaultValue
         </View>
       </View>
 
+      <Controller
+        control={control}
+        name="academicYear"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Input
+            label="Academic Year"
+            placeholder="e.g., 2024-2025"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            error={errors.academicYear?.message}
+          />
+        )}
+      />
+
       <TouchableOpacity
         onPress={handleSubmit(onSubmit)}
         disabled={isSubmitting}
-        className={`mt-6 py-4 rounded-xl ${isSubmitting ? 'bg-gray-400' : 'bg-blue-600'}`}
+        className={`mt-6 py-4 rounded-xl ${isSubmitting ? 'bg-gray-600' : 'bg-blue-600'}`}
       >
         <Text className="text-white text-center font-bold text-lg">
           {isSubmitting ? 'Saving...' : 'Save and Continue'}
