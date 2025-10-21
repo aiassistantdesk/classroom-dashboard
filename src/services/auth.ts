@@ -18,17 +18,8 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
     // Try popup first (works better on desktop)
     const result = await signInWithPopup(auth, googleProvider);
 
-    // After successful sign-in, save/update teacher profile
-    if (result.user) {
-      await saveTeacherProfile(result.user.uid, {
-        id: result.user.uid,
-        name: result.user.displayName || 'Unknown',
-        email: result.user.email || '',
-        photoUrl: result.user.photoURL || undefined,
-        subject: '', // Can be updated later by the user
-        schoolName: '', // Can be updated later by the user
-      });
-    }
+    // Don't create teacher profile here - let CreateTeacherScreen handle it
+    // This prevents Firestore calls before user has set up their profile
 
     return result;
   } catch (error: any) {
@@ -49,17 +40,8 @@ export const handleRedirectResult = async (): Promise<UserCredential | null> => 
   try {
     const result = await getRedirectResult(auth);
 
-    if (result && result.user) {
-      // Save/update teacher profile after redirect sign-in
-      await saveTeacherProfile(result.user.uid, {
-        id: result.user.uid,
-        name: result.user.displayName || 'Unknown',
-        email: result.user.email || '',
-        photoUrl: result.user.photoURL || undefined,
-        subject: '',
-        schoolName: '',
-      });
-    }
+    // Don't create teacher profile here - let CreateTeacherScreen handle it
+    // This prevents Firestore calls before user has set up their profile
 
     return result;
   } catch (error) {

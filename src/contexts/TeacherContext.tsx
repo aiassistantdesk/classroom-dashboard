@@ -41,8 +41,13 @@ export const TeacherProvider: React.FC<{ children: ReactNode }> = ({ children })
             await saveTeacherProfile(user.uid, { academicYear });
           }
         }
+        // If profile is null, that's okay - means first-time user
+        // The loading will stop and CreateTeacherScreen will show
       } catch (error) {
         console.error('Failed to fetch teacher data:', error);
+        // On error, treat as first-time user (no profile)
+        setTeacher(null);
+        setCurrentSession(null);
       } finally {
         setLoading(false);
       }
