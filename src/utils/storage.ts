@@ -212,12 +212,37 @@ export const clearAuthSession = async (): Promise<void> => {
 };
 
 /**
+ * Get all stored credentials
+ */
+export const getAllCredentials = async (): Promise<AuthCredentials[]> => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(AUTH_CREDENTIALS_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : [];
+  } catch (error) {
+    console.error('Error getting credentials:', error);
+    return [];
+  }
+};
+
+/**
  * Save auth credentials to AsyncStorage (for demo/remember me)
+ * Supports multiple users - stores array of credentials
  */
 export const saveAuthCredentials = async (email: string, password: string): Promise<void> => {
   try {
-    const credentials: AuthCredentials = { email, password };
-    const jsonValue = JSON.stringify(credentials);
+    const allCredentials = await getAllCredentials();
+
+    // Check if user already exists, update password if so
+    const existingIndex = allCredentials.findIndex(cred => cred.email === email);
+
+    if (existingIndex >= 0) {
+      allCredentials[existingIndex].password = password;
+    } else {
+      // Add new user
+      allCredentials.push({ email, password });
+    }
+
+    const jsonValue = JSON.stringify(allCredentials);
     await AsyncStorage.setItem(AUTH_CREDENTIALS_KEY, jsonValue);
   } catch (error) {
     console.error('Error saving credentials:', error);
@@ -226,12 +251,13 @@ export const saveAuthCredentials = async (email: string, password: string): Prom
 };
 
 /**
- * Get auth credentials from AsyncStorage
+ * Get specific user credentials from AsyncStorage
  */
-export const getAuthCredentials = async (): Promise<AuthCredentials | null> => {
+export const getAuthCredentials = async (email: string): Promise<AuthCredentials | null> => {
   try {
-    const jsonValue = await AsyncStorage.getItem(AUTH_CREDENTIALS_KEY);
-    return jsonValue != null ? JSON.parse(jsonValue) : null;
+    const allCredentials = await getAllCredentials();
+    const userCred = allCredentials.find(cred => cred.email === email);
+    return userCred || null;
   } catch (error) {
     console.error('Error getting credentials:', error);
     return null;
@@ -240,17 +266,20 @@ export const getAuthCredentials = async (): Promise<AuthCredentials | null> => {
 
 /**
  * Verify credentials (demo authentication)
+ * Supports multiple users
  */
 export const verifyCredentials = async (email: string, password: string): Promise<boolean> => {
   try {
-    const stored = await getAuthCredentials();
+    const stored = await getAuthCredentials(email);
+
     if (!stored) {
-      // First time user - save credentials
+      // New user - save credentials
       await saveAuthCredentials(email, password);
       return true;
     }
-    // Verify credentials match
-    return stored.email === email && stored.password === password;
+
+    // Verify password matches for this email
+    return stored.password === password;
   } catch (error) {
     console.error('Error verifying credentials:', error);
     return false;
