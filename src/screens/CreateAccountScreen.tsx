@@ -102,7 +102,6 @@ export const CreateAccountScreen: React.FC = () => {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!isLoading}
             />
           </View>
 
@@ -121,7 +120,6 @@ export const CreateAccountScreen: React.FC = () => {
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!isLoading}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
@@ -155,7 +153,6 @@ export const CreateAccountScreen: React.FC = () => {
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!isLoading}
               />
               <TouchableOpacity
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}

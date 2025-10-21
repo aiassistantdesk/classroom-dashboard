@@ -90,7 +90,6 @@ export const LoginScreen: React.FC = () => {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!isLoading}
             />
           </View>
 
@@ -109,7 +108,6 @@ export const LoginScreen: React.FC = () => {
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!isLoading}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
