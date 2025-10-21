@@ -8,6 +8,7 @@ import { Input } from '../ui/Input';
 const teacherSchema = z.object({
   name: z.string().min(3, 'Full name must be at least 3 characters'),
   subject: z.string().min(2, 'Subject must be at least 2 characters'),
+  schoolName: z.string().min(3, 'School name must be at least 3 characters'),
   classStandard: z.string().min(1, 'Class is required'),
   division: z.string().optional(),
 });
@@ -54,6 +55,21 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({ onSubmit, defaultValue
             onChangeText={onChange}
             onBlur={onBlur}
             error={errors.subject?.message}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="schoolName"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Input
+            label="School Name"
+            placeholder="Enter your school name"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            error={errors.schoolName?.message}
           />
         )}
       />
