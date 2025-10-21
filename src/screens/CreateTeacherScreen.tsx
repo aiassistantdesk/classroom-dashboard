@@ -18,16 +18,31 @@ export const CreateTeacherScreen: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await createTeacher(user.uid, {
+      // Add timeout to prevent hanging forever
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore timeout - database may not be set up')), 10000)
+      );
+
+      const createPromise = createTeacher(user.uid, {
         ...data,
         email: user.email || '',
         photoUrl: user.photoURL || '',
         academicYear: '2024-2025', // Add a default academic year
       });
+
+      await Promise.race([createPromise, timeoutPromise]);
       await refreshTeacherData(); // Refresh teacher data after creation
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating teacher:', error);
-      Alert.alert('Error', 'Failed to create teacher profile. Please try again.');
+
+      if (error.message?.includes('timeout') || error.message?.includes('database')) {
+        Alert.alert(
+          'Firestore Not Set Up',
+          'Please create Firestore database first:\n\n1. Go to Firebase Console\n2. Create Firestore Database\n3. Deploy Security Rules\n\nSee SETUP_CHECKLIST.md for details.'
+        );
+      } else {
+        Alert.alert('Error', 'Failed to create teacher profile. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }

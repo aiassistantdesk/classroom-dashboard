@@ -10,7 +10,7 @@ const teacherSchema = z.object({
   subject: z.string().min(2, 'Subject must be at least 2 characters'),
   schoolName: z.string().min(3, 'School name must be at least 3 characters'),
   classStandard: z.string().min(1, 'Class is required'),
-  division: z.string().optional(),
+  division: z.string().optional().or(z.literal('')), // Allow empty string
 });
 
 export type TeacherFormData = z.infer<typeof teacherSchema>;
