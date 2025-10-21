@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal as RNModal, ScrollView, Alert, Platform } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
 import { useTeacher } from '../../contexts/TeacherContext';
 import { User, LogOut, Calendar, BookOpen, School, Mail, Phone, ChevronDown, AlertTriangle } from 'lucide-react-native';
 import { Select, SelectOption } from './Select';
 
 export const ProfileMenu: React.FC = () => {
-  const { currentSession, logout, changeAcademicYear } = useTeacher();
+  const { currentSession, changeAcademicYear } = useTeacher();
+  const { logout } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
   const [yearModalVisible, setYearModalVisible] = useState(false);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);

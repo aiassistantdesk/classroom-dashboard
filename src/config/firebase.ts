@@ -3,15 +3,15 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 
 // Firebase configuration
-// Replace these values with your actual Firebase project configuration
-// Get these from: Firebase Console > Project Settings > General > Your apps
+// Your Firebase project configuration from Firebase Console
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyD0tOboyzsoH4V49IPZ-jkkAq3KGps1ESs",
+  authDomain: "classroom-dashboard-3a8c9.firebaseapp.com",
+  projectId: "classroom-dashboard-3a8c9",
+  storageBucket: "classroom-dashboard-3a8c9.firebasestorage.app",
+  messagingSenderId: "103280595527",
+  appId: "1:103280595527:web:38a48c0cbb4d31d4680be2",
+  measurementId: "G-NSE58LK3XV"
 };
 
 // Initialize Firebase

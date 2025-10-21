@@ -65,6 +65,27 @@ export const getTeacherProfile = async (userId: string): Promise<Teacher | null>
 };
 
 /**
+ * Create a new teacher profile in Firestore
+ */
+export const createTeacher = async (
+  userId: string,
+  teacherData: Omit<Teacher, 'id'>
+): Promise<void> => {
+  try {
+    const teacherRef = doc(db, COLLECTIONS.TEACHERS, userId);
+    await setDoc(teacherRef, {
+      ...teacherData,
+      id: userId,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error('Error creating teacher:', error);
+    throw error;
+  }
+};
+
+/**
  * Listen to real-time updates for teacher profile
  */
 export const subscribeToTeacherProfile = (
@@ -94,6 +115,7 @@ export const subscribeToTeacherProfile = (
  */
 export const addStudent = async (
   teacherId: string,
+  academicYear: string,
   student: Omit<Student, 'id'>
 ): Promise<string> => {
   try {
@@ -105,6 +127,7 @@ export const addStudent = async (
       ...student,
       id: studentId,
       teacherId,
+      academicYear,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -193,10 +216,15 @@ export const getStudentsByTeacher = async (teacherId: string): Promise<Student[]
  */
 export const subscribeToStudents = (
   teacherId: string,
+  academicYear: string,
   callback: (students: Student[]) => void
 ): (() => void) => {
   const studentsRef = collection(db, COLLECTIONS.STUDENTS);
-  const q = query(studentsRef, where('teacherId', '==', teacherId));
+  const q = query(
+    studentsRef,
+    where('teacherId', '==', teacherId),
+    where('academicYear', '==', academicYear)
+  );
 
   return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
     const students: Student[] = [];

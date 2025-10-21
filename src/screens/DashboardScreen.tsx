@@ -7,11 +7,11 @@ import { LoadingSpinner, ProfileMenu } from '../components/ui';
 import { Users, UserPlus, GraduationCap } from 'lucide-react-native';
 
 export const DashboardScreen: React.FC = () => {
-  const { students, loading } = useStudents();
-  const { currentSession } = useTeacher();
+  const { students, loading: studentsLoading } = useStudents();
+  const { currentSession, loading: teacherLoading } = useTeacher();
   const navigation = useNavigation();
 
-  if (loading) {
+  if (studentsLoading || teacherLoading) {
     return (
       <View className="flex-1 bg-gray-50">
         <LoadingSpinner fullScreen message="Loading dashboard..." />

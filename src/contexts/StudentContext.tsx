@@ -66,7 +66,7 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
 
   // Subscribe to real-time student updates from Firestore
   useEffect(() => {
-    if (!user) {
+    if (!user || !currentSession) {
       setStudents([]);
       setLoading(false);
       return;
@@ -76,14 +76,14 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
     setError(null);
 
     // Subscribe to real-time updates
-    const unsubscribe = subscribeToStudents(user.uid, (updatedStudents) => {
+    const unsubscribe = subscribeToStudents(user.uid, currentSession.academicYear, (updatedStudents) => {
       setStudents(updatedStudents);
       setLoading(false);
     });
 
     // Cleanup subscription on unmount or when user changes
     return () => unsubscribe();
-  }, [user]);
+  }, [user, currentSession]);
 
   // Apply filters and sorting whenever students, filters, sortOptions, or teacher session changes
   useEffect(() => {
@@ -92,8 +92,8 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
 
   const addStudent = async (input: CreateStudentInput): Promise<Student> => {
     try {
-      if (!user) {
-        throw new Error('User not authenticated');
+      if (!user || !currentSession) {
+        throw new Error('User not authenticated or session not found');
       }
 
       const studentData = {
@@ -101,7 +101,7 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
         age: calculateAge(input.birthDate),
       };
 
-      const studentId = await addStudentToFirestore(user.uid, studentData);
+      const studentId = await addStudentToFirestore(user.uid, currentSession.academicYear, studentData);
 
       // Return the newly created student
       const newStudent: Student = {
@@ -173,14 +173,6 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
     if (currentSession) {
       const teacher = currentSession.teacher;
       const academicYear = currentSession.academicYear;
-
-      // Filter by teacher's class
-      result = result.filter((s) => s.classStandard === teacher.classStandard);
-
-      // Filter by teacher's division if specified
-      if (teacher.division) {
-        result = result.filter((s) => s.division === teacher.division);
-      }
 
       // Filter by current academic year
       result = result.filter((s) => s.academicYear === academicYear);

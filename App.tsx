@@ -3,6 +3,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider } from './src/contexts/AuthContext';
 import { TeacherProvider } from './src/contexts/TeacherContext';
 import { StudentProvider } from './src/contexts/StudentContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
@@ -34,14 +35,16 @@ const linking = {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <TeacherProvider>
-        <StudentProvider>
-          <NavigationContainer linking={linking}>
-            <RootNavigator />
-            <StatusBar style="auto" />
-          </NavigationContainer>
-        </StudentProvider>
-      </TeacherProvider>
+      <AuthProvider>
+        <TeacherProvider>
+          <StudentProvider>
+            <NavigationContainer linking={linking}>
+              <RootNavigator />
+              <StatusBar style="auto" />
+            </NavigationContainer>
+          </StudentProvider>
+        </TeacherProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
