@@ -3,6 +3,7 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 // Root Stack Navigator
 export type RootStackParamList = {
   Login: undefined;
+  CreateAccount: undefined;
   CreateTeacher: undefined;
   Profile: undefined;
   MainTabs: NavigatorScreenParams<TabParamList>;

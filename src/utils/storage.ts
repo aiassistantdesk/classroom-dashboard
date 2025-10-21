@@ -265,24 +265,59 @@ export const getAuthCredentials = async (email: string): Promise<AuthCredentials
 };
 
 /**
- * Verify credentials (demo authentication)
- * Supports multiple users
+ * Check if email already exists
  */
-export const verifyCredentials = async (email: string, password: string): Promise<boolean> => {
+export const checkEmailExists = async (email: string): Promise<boolean> => {
+  try {
+    const credentials = await getAuthCredentials(email);
+    return credentials !== null;
+  } catch (error) {
+    console.error('Error checking email existence:', error);
+    return false;
+  }
+};
+
+/**
+ * Create new user account
+ * Returns error if email already exists
+ */
+export const createUserAccount = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const emailExists = await checkEmailExists(email);
+
+    if (emailExists) {
+      return { success: false, error: 'Email already registered. Please login instead.' };
+    }
+
+    await saveAuthCredentials(email, password);
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating account:', error);
+    return { success: false, error: 'Failed to create account. Please try again.' };
+  }
+};
+
+/**
+ * Verify credentials for login (demo authentication)
+ * Returns specific error messages
+ */
+export const verifyCredentials = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
   try {
     const stored = await getAuthCredentials(email);
 
     if (!stored) {
-      // New user - save credentials
-      await saveAuthCredentials(email, password);
-      return true;
+      return { success: false, error: 'Account not found. Please create an account first.' };
     }
 
     // Verify password matches for this email
-    return stored.password === password;
+    if (stored.password === password) {
+      return { success: true };
+    } else {
+      return { success: false, error: 'Incorrect password. Please try again.' };
+    }
   } catch (error) {
     console.error('Error verifying credentials:', error);
-    return false;
+    return { success: false, error: 'Failed to verify credentials. Please try again.' };
   }
 };
 

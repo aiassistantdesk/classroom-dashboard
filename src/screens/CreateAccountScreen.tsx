@@ -8,13 +8,14 @@ import { BookOpen, Eye, EyeOff } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-export const LoginScreen: React.FC = () => {
+export const CreateAccountScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { login, isLoading } = useAuth();
+  const { createAccount, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const validateEmail = (email: string): boolean => {
@@ -22,7 +23,7 @@ export const LoginScreen: React.FC = () => {
     return emailRegex.test(email);
   };
 
-  const handleLogin = async () => {
+  const handleCreateAccount = async () => {
     // Reset errors
     setValidationError(null);
 
@@ -47,12 +48,23 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
-    // Attempt login
-    const result = await login(email.trim().toLowerCase(), password, rememberMe);
+    if (!confirmPassword.trim()) {
+      setValidationError('Please confirm your password');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setValidationError('Passwords do not match');
+      return;
+    }
+
+    // Attempt to create account
+    const result = await createAccount(email.trim().toLowerCase(), password);
 
     if (!result.success) {
-      setValidationError(result.error || 'Failed to login');
+      setValidationError(result.error || 'Failed to create account');
     }
+    // On success, AuthContext will handle navigation via RootNavigator
   };
 
   return (
@@ -67,14 +79,14 @@ export const LoginScreen: React.FC = () => {
             <BookOpen size={48} color="#fff" />
           </View>
           <Text className="text-3xl font-bold text-white mb-2">
-            Classroom Dashboard
+            Create Account
           </Text>
           <Text className="text-gray-400 text-center">
-            Manage your students with ease
+            Join Classroom Dashboard and start managing your students
           </Text>
         </View>
 
-        {/* Login Form */}
+        {/* Create Account Form */}
         <View className="space-y-4">
           {/* Email Input */}
           <View>
@@ -123,25 +135,41 @@ export const LoginScreen: React.FC = () => {
                 )}
               </TouchableOpacity>
             </View>
+            <Text className="text-gray-500 text-xs mt-1">
+              Minimum 6 characters
+            </Text>
           </View>
 
-          {/* Remember Me */}
-          <TouchableOpacity
-            onPress={() => setRememberMe(!rememberMe)}
-            className="flex-row items-center mt-4"
-            disabled={isLoading}
-          >
-            <View
-              className={`w-5 h-5 rounded border-2 mr-3 items-center justify-center ${
-                rememberMe ? 'bg-blue-600 border-blue-600' : 'border-gray-600'
-              }`}
-            >
-              {rememberMe && (
-                <Text className="text-white text-xs">✓</Text>
-              )}
+          {/* Confirm Password Input */}
+          <View className="mt-4">
+            <Text className="text-gray-300 mb-2 text-sm font-medium">
+              Confirm Password
+            </Text>
+            <View className="relative">
+              <TextInput
+                className="bg-gray-800 text-white px-4 py-3.5 rounded-xl border border-gray-700 focus:border-blue-600 pr-12"
+                placeholder="Confirm your password"
+                placeholderTextColor="#6B7280"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isLoading}
+              />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 top-4"
+                disabled={isLoading}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff size={20} color="#6B7280" />
+                ) : (
+                  <Eye size={20} color="#6B7280" />
+                )}
+              </TouchableOpacity>
             </View>
-            <Text className="text-gray-300">Remember me</Text>
-          </TouchableOpacity>
+          </View>
 
           {/* Error Messages */}
           {validationError && (
@@ -152,9 +180,9 @@ export const LoginScreen: React.FC = () => {
             </View>
           )}
 
-          {/* Login Button */}
+          {/* Create Account Button */}
           <TouchableOpacity
-            onPress={handleLogin}
+            onPress={handleCreateAccount}
             disabled={isLoading}
             className={`py-4 rounded-xl items-center mt-6 ${
               isLoading ? 'bg-blue-600/50' : 'bg-blue-600'
@@ -164,27 +192,20 @@ export const LoginScreen: React.FC = () => {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text className="text-white font-bold text-lg">
-                Login
+                Create Account
               </Text>
             )}
           </TouchableOpacity>
 
-          {/* Create Account Link */}
+          {/* Login Link */}
           <View className="mt-6 flex-row justify-center items-center">
-            <Text className="text-gray-400">Don't have an account? </Text>
+            <Text className="text-gray-400">Already have an account? </Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('CreateAccount')}
+              onPress={() => navigation.navigate('Login')}
               disabled={isLoading}
             >
-              <Text className="text-blue-500 font-semibold">Create one</Text>
+              <Text className="text-blue-500 font-semibold">Login</Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Demo Info */}
-          <View className="mt-4 bg-gray-800 rounded-xl p-4">
-            <Text className="text-gray-400 text-xs text-center">
-              Demo Mode: Your credentials are stored locally on this device.
-            </Text>
           </View>
         </View>
       </View>

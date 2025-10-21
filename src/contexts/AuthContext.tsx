@@ -4,6 +4,7 @@ import {
   saveAuthSession,
   clearAuthSession,
   verifyCredentials,
+  createUserAccount,
   isProfileComplete,
   AuthSession,
 } from '../utils/storage';
@@ -13,7 +14,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isProfileComplete: boolean;
-  login: (email: string, password: string, rememberMe: boolean) => Promise<boolean>;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<{ success: boolean; error?: string }>;
+  createAccount: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   checkProfileCompletion: () => Promise<void>;
   error: string | null;
@@ -54,17 +56,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const login = async (email: string, password: string, rememberMe: boolean): Promise<boolean> => {
+  const createAccount = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       setError(null);
       setIsLoading(true);
 
-      // Verify credentials (demo authentication)
-      const isValid = await verifyCredentials(email, password);
+      // Create account
+      const result = await createUserAccount(email, password);
 
-      if (!isValid) {
-        setError('Invalid email or password');
-        return false;
+      if (!result.success) {
+        setError(result.error || 'Failed to create account');
+        return { success: false, error: result.error };
+      }
+
+      // Auto-login after account creation (always remember)
+      await saveAuthSession(email, true);
+      setEmail(email);
+
+      // Profile is not complete yet (needs to go to Teacher Setup)
+      setProfileComplete(false);
+
+      return { success: true };
+    } catch (err: any) {
+      const errorMsg = err.message || 'Failed to create account';
+      setError(errorMsg);
+      console.error('Create account error:', err);
+      return { success: false, error: errorMsg };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (email: string, password: string, rememberMe: boolean): Promise<{ success: boolean; error?: string }> => {
+    try {
+      setError(null);
+      setIsLoading(true);
+
+      // Verify credentials
+      const result = await verifyCredentials(email, password);
+
+      if (!result.success) {
+        setError(result.error || 'Failed to login');
+        return { success: false, error: result.error };
       }
 
       // Save session
@@ -75,11 +108,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const complete = await isProfileComplete(email);
       setProfileComplete(complete);
 
-      return true;
+      return { success: true };
     } catch (err: any) {
-      setError(err.message || 'Failed to login');
+      const errorMsg = err.message || 'Failed to login';
+      setError(errorMsg);
       console.error('Login error:', err);
-      return false;
+      return { success: false, error: errorMsg };
     } finally {
       setIsLoading(false);
     }
@@ -112,6 +146,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isLoading,
         isProfileComplete: profileComplete,
         login,
+        createAccount,
         logout,
         checkProfileCompletion,
         error,

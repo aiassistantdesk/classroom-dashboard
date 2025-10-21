@@ -7,6 +7,7 @@ import { StudentDetailScreen } from '../screens/StudentDetailScreen';
 import { AddStudentScreen } from '../screens/AddStudentScreen';
 import { EditStudentScreen } from '../screens/EditStudentScreen';
 import { LoginScreen } from '../screens/LoginScreen';
+import { CreateAccountScreen } from '../screens/CreateAccountScreen';
 import { CreateTeacherScreen } from '../screens/CreateTeacherScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,8 +32,11 @@ export const RootNavigator: React.FC = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {!isAuthenticated ? (
-        // Not logged in - show login screen
-        <Stack.Screen name="Login" component={LoginScreen} />
+        // Not logged in - show login and create account screens
+        <>
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
+        </>
       ) : !isProfileComplete ? (
         // Logged in but no profile - show teacher setup
         <Stack.Screen name="CreateTeacher" component={CreateTeacherScreen} />
